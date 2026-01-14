@@ -8,6 +8,22 @@
 </head>
 <body>
   <div class="container">
+    <!-- Header with Check Now button -->
+    <div id="header" class="header hidden">
+      <button id="check-now-btn" class="btn check-now">
+        <span class="refresh-icon">🔄</span>
+        <span class="spinner hidden"></span>
+        <span class="btn-text">Check Now</span>
+      </button>
+      <span id="last-checked" class="last-checked"></span>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loading" class="state hidden">
+      <div class="spinner-large"></div>
+      <p>Checking Gmail...</p>
+    </div>
+
     <!-- Auth Required State -->
     <div id="auth-required" class="state hidden">
       <div class="icon">🔐</div>
@@ -19,7 +35,7 @@
     <div id="no-code" class="state hidden">
       <div class="icon">📭</div>
       <p>No verification codes detected</p>
-      <span class="hint">Codes from the last hour will appear here</span>
+      <span class="hint">Click "Check Now" to refresh</span>
     </div>
 
     <!-- Code Available State -->

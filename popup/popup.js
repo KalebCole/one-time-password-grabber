@@ -1,5 +1,6 @@
 // UI Elements
 const states = {
+  loading: document.getElementById('loading'),
   authRequired: document.getElementById('auth-required'),
   noCode: document.getElementById('no-code'),
   codeAvailable: document.getElementById('code-available'),
@@ -7,6 +8,9 @@ const states = {
 };
 
 const elements = {
+  header: document.getElementById('header'),
+  checkNowBtn: document.getElementById('check-now-btn'),
+  lastChecked: document.getElementById('last-checked'),
   authBtn: document.getElementById('auth-btn'),
   codeValue: document.getElementById('code-value'),
   codeFrom: document.getElementById('code-from'),
@@ -18,11 +22,37 @@ const elements = {
   errorMessage: document.getElementById('error-message')
 };
 
+let isChecking = false;
+
 // Show a specific state, hide others
 function showState(stateName) {
   Object.entries(states).forEach(([name, el]) => {
     el.classList.toggle('hidden', name !== stateName);
   });
+}
+
+// Show/hide header (visible when authenticated)
+function showHeader(show) {
+  elements.header.classList.toggle('hidden', !show);
+}
+
+// Set loading state on Check Now button
+function setCheckingState(checking) {
+  isChecking = checking;
+  const btn = elements.checkNowBtn;
+  const refreshIcon = btn.querySelector('.refresh-icon');
+  const spinner = btn.querySelector('.spinner');
+  const btnText = btn.querySelector('.btn-text');
+
+  btn.disabled = checking;
+  refreshIcon.classList.toggle('hidden', checking);
+  spinner.classList.toggle('hidden', !checking);
+  btnText.textContent = checking ? 'Checking...' : 'Check Now';
+}
+
+// Update last checked timestamp
+function updateLastChecked() {
+  elements.lastChecked.textContent = `Last checked: just now`;
 }
 
 // Format relative time
@@ -45,6 +75,71 @@ async function copyToClipboard(code) {
   } catch (err) {
     console.error('Clipboard write failed:', err);
     return false;
+  }
+}
+
+// Check Now - fetch Gmail immediately
+async function checkNow() {
+  if (isChecking) return;
+
+  setCheckingState(true);
+
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'CHECK_NOW' });
+
+    updateLastChecked();
+
+    if (response?.error) {
+      if (response.error === 'No auth token') {
+        showHeader(false);
+        showState('authRequired');
+      } else {
+        showState('error');
+        elements.errorMessage.textContent = response.error;
+      }
+      return;
+    }
+
+    if (response?.code) {
+      displayCode(response.code);
+    } else {
+      showState('noCode');
+    }
+  } catch (err) {
+    console.error('Check now error:', err);
+    showState('error');
+    elements.errorMessage.textContent = err.message || 'Failed to check Gmail';
+  } finally {
+    setCheckingState(false);
+  }
+}
+
+// Display a code in the UI
+async function displayCode(codeData) {
+  const { code, from, subject, timestamp, copied } = codeData;
+
+  elements.codeValue.textContent = code;
+  elements.codeFrom.textContent = from || subject || 'Unknown sender';
+  elements.codeTime.textContent = formatRelativeTime(timestamp);
+
+  showState('codeAvailable');
+
+  // Auto-copy if not already copied
+  if (!copied) {
+    const success = await copyToClipboard(code);
+    if (success) {
+      elements.copyStatus.textContent = 'Auto-copied to clipboard!';
+      // Mark as copied in storage
+      chrome.storage.local.get(['currentCode'], (result) => {
+        if (result.currentCode) {
+          chrome.storage.local.set({
+            currentCode: { ...result.currentCode, copied: true }
+          });
+        }
+      });
+    }
+  } else {
+    elements.copyStatus.textContent = '';
   }
 }
 
@@ -87,17 +182,16 @@ async function handleCopy() {
 // Handle dismiss/clear
 async function handleClear() {
   await chrome.storage.local.remove(['currentCode']);
-  await chrome.action.setBadge({ text: '' });
+  await chrome.action.setBadgeText({ text: '' });
   showState('noCode');
 }
 
 // Handle auth
 async function handleAuth() {
   try {
-    // Send message to service worker to initiate OAuth
     chrome.runtime.sendMessage({ type: 'AUTH_REQUEST' }, (response) => {
       if (response?.success) {
-        init(); // Reinitialize after auth
+        init();
       } else {
         showState('error');
         elements.errorMessage.textContent = response?.error || 'Authentication failed';
@@ -125,37 +219,29 @@ async function init() {
     });
 
     if (!token) {
+      showHeader(false);
       showState('authRequired');
       return;
     }
 
+    // Show header now that we're authenticated
+    showHeader(true);
+
     // Check for stored code
-    const result = await chrome.storage.local.get(['currentCode']);
+    const result = await chrome.storage.local.get(['currentCode', 'lastPollTimestamp']);
+
+    // Update last checked time if available
+    if (result.lastPollTimestamp) {
+      elements.lastChecked.textContent = `Last checked: ${formatRelativeTime(result.lastPollTimestamp)}`;
+    }
 
     if (result.currentCode && result.currentCode.code) {
-      const { code, from, subject, timestamp, copied } = result.currentCode;
-
-      elements.codeValue.textContent = code;
-      elements.codeFrom.textContent = from || subject || 'Unknown sender';
-      elements.codeTime.textContent = formatRelativeTime(timestamp);
-
-      showState('codeAvailable');
-
-      // Auto-copy if not already copied
-      if (!copied) {
-        const success = await copyToClipboard(code);
-        if (success) {
-          elements.copyStatus.textContent = 'Auto-copied to clipboard!';
-          // Mark as copied
-          chrome.storage.local.set({
-            currentCode: { ...result.currentCode, copied: true }
-          });
-        }
-      } else {
-        elements.copyStatus.textContent = '';
-      }
+      // Code exists - just display it (no auto-fetch)
+      displayCode(result.currentCode);
     } else {
-      showState('noCode');
+      // No code stored - auto-check immediately
+      showState('loading');
+      await checkNow();
     }
   } catch (err) {
     console.error('Init error:', err);
@@ -166,6 +252,7 @@ async function init() {
 
 // Event listeners
 elements.authBtn.addEventListener('click', handleAuth);
+elements.checkNowBtn.addEventListener('click', checkNow);
 elements.copyBtn.addEventListener('click', handleCopy);
 elements.clearBtn.addEventListener('click', handleClear);
 elements.retryBtn.addEventListener('click', handleRetry);
