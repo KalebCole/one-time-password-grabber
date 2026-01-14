@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verification Code</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Auth Required State -->
+    <div id="auth-required" class="state hidden">
+      <div class="icon">🔐</div>
+      <p>Sign in to Gmail to detect verification codes</p>
+      <button id="auth-btn" class="btn primary">Sign in with Google</button>
+    </div>
+
+    <!-- No Code State -->
+    <div id="no-code" class="state hidden">
+      <div class="icon">📭</div>
+      <p>No verification codes detected</p>
+      <span class="hint">Codes from the last hour will appear here</span>
+    </div>
+
+    <!-- Code Available State -->
+    <div id="code-available" class="state hidden">
+      <div class="code-display">
+        <span id="code-value" class="code">------</span>
+        <button id="copy-btn" class="btn icon-btn" title="Copy to clipboard">
+          <span class="copy-icon">📋</span>
+          <span class="check-icon hidden">✓</span>
+        </button>
+      </div>
+      <div class="meta">
+        <span id="code-from" class="from"></span>
+        <span id="code-time" class="time"></span>
+      </div>
+      <div class="status" id="copy-status"></div>
+      <button id="clear-btn" class="btn secondary">Dismiss</button>
+    </div>
+
+    <!-- Error State -->
+    <div id="error-state" class="state hidden">
+      <div class="icon">⚠️</div>
+      <p id="error-message">Something went wrong</p>
+      <button id="retry-btn" class="btn secondary">Retry</button>
+    </div>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

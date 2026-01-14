@@ -1,0 +1,16 @@
+{
+  "name": "verification-code-grabber",
+  "version": "1.0.0",
+  "description": "A Chrome extension that automatically detects verification codes from Gmail and copies them to your clipboard with one click.",
+  "main": "service-worker.js",
+  "scripts": {
+    "generate-icons": "node scripts/generate-icons.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "canvas": "^3.2.1"
+  }
+}

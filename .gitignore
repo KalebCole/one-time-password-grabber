@@ -1,0 +1,6 @@
+node_modules/
+*.log
+.DS_Store
+
+# OAuth credentials - DO NOT COMMIT
+client_secret*.json
