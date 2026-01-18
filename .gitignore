@@ -4,3 +4,6 @@ node_modules/
 
 # OAuth credentials - DO NOT COMMIT
 client_secret*.json
+
+# Claude Code local settings (personal overrides)
+.claude/settings.local.json

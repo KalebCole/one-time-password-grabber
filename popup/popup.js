@@ -17,12 +17,14 @@ const elements = {
   codeTime: document.getElementById('code-time'),
   copyBtn: document.getElementById('copy-btn'),
   copyStatus: document.getElementById('copy-status'),
+  copyArchiveBtn: document.getElementById('copy-archive-btn'),
   clearBtn: document.getElementById('clear-btn'),
   retryBtn: document.getElementById('retry-btn'),
   errorMessage: document.getElementById('error-message')
 };
 
 let isChecking = false;
+let currentMessageId = null;
 
 // Show a specific state, hide others
 function showState(stateName) {
@@ -116,11 +118,24 @@ async function checkNow() {
 
 // Display a code in the UI
 async function displayCode(codeData) {
-  const { code, from, subject, timestamp, copied } = codeData;
+  const { code, from, subject, timestamp, messageId, copied } = codeData;
+
+  // Store messageId for archive functionality
+  currentMessageId = messageId || null;
 
   elements.codeValue.textContent = code;
   elements.codeFrom.textContent = from || subject || 'Unknown sender';
   elements.codeTime.textContent = formatRelativeTime(timestamp);
+
+  // Disable archive button if no messageId (old stored codes)
+  if (elements.copyArchiveBtn) {
+    elements.copyArchiveBtn.disabled = !currentMessageId;
+    if (!currentMessageId) {
+      elements.copyArchiveBtn.title = 'Archive unavailable for this code';
+    } else {
+      elements.copyArchiveBtn.title = '';
+    }
+  }
 
   showState('codeAvailable');
 
@@ -176,6 +191,92 @@ async function handleCopy() {
   } else {
     elements.copyStatus.textContent = 'Copy failed - click to try again';
     elements.copyStatus.classList.add('error');
+  }
+}
+
+// Archive email via service worker
+async function archiveEmail(messageId) {
+  const response = await chrome.runtime.sendMessage({
+    type: 'ARCHIVE_EMAIL',
+    messageId
+  });
+  return response;
+}
+
+// Set loading state on Copy & Archive button
+function setArchivingState(archiving) {
+  const btn = elements.copyArchiveBtn;
+  if (!btn) return;
+
+  const btnText = btn.querySelector('.btn-text');
+  const spinner = btn.querySelector('.btn-spinner');
+
+  btn.disabled = archiving;
+  if (spinner) spinner.classList.toggle('hidden', !archiving);
+  if (btnText) btnText.textContent = archiving ? 'Archiving...' : 'Copy & Archive';
+}
+
+// Handle copy and archive
+async function handleCopyAndArchive() {
+  const code = elements.codeValue.textContent;
+
+  // First, copy to clipboard
+  const copySuccess = await copyToClipboard(code);
+
+  if (copySuccess) {
+    elements.copyStatus.textContent = 'Copied to clipboard!';
+    elements.copyStatus.classList.remove('error', 'warning');
+
+    // Mark as copied in storage
+    chrome.storage.local.get(['currentCode'], (result) => {
+      if (result.currentCode) {
+        chrome.storage.local.set({
+          currentCode: { ...result.currentCode, copied: true }
+        });
+      }
+    });
+  } else {
+    elements.copyStatus.textContent = 'Copy failed';
+    elements.copyStatus.classList.add('error');
+    return; // Don't proceed with archive if copy failed
+  }
+
+  // Then, archive the email
+  if (!currentMessageId) {
+    elements.copyStatus.textContent = 'Copied! (Archive unavailable)';
+    elements.copyStatus.classList.add('warning');
+    return;
+  }
+
+  setArchivingState(true);
+
+  try {
+    const result = await archiveEmail(currentMessageId);
+
+    if (result.success) {
+      elements.copyStatus.textContent = 'Copied & archived!';
+      elements.copyStatus.classList.remove('error', 'warning');
+
+      // Clear the code and badge after successful archive
+      setTimeout(async () => {
+        await chrome.storage.local.remove(['currentCode']);
+        await chrome.action.setBadgeText({ text: '' });
+        showState('noCode');
+      }, 1500);
+    } else {
+      // Archive failed but copy succeeded
+      if (result.error === 'Permission denied - please re-authenticate') {
+        elements.copyStatus.textContent = 'Copied! Archive failed - please sign out and back in';
+      } else {
+        elements.copyStatus.textContent = `Copied! Archive failed: ${result.error}`;
+      }
+      elements.copyStatus.classList.add('warning');
+    }
+  } catch (err) {
+    elements.copyStatus.textContent = `Copied! Archive error: ${err.message}`;
+    elements.copyStatus.classList.add('warning');
+  } finally {
+    setArchivingState(false);
   }
 }
 
@@ -254,6 +355,7 @@ async function init() {
 elements.authBtn.addEventListener('click', handleAuth);
 elements.checkNowBtn.addEventListener('click', checkNow);
 elements.copyBtn.addEventListener('click', handleCopy);
+elements.copyArchiveBtn.addEventListener('click', handleCopyAndArchive);
 elements.clearBtn.addEventListener('click', handleClear);
 elements.retryBtn.addEventListener('click', handleRetry);
 

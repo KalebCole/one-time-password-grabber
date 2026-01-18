@@ -7,6 +7,7 @@ A Chrome extension that automatically detects verification codes from Gmail and 
 - **Background polling** - Checks Gmail every minute for new verification codes
 - **Smart detection** - Uses keyword matching + regex to find OTP codes
 - **One-click copy** - Auto-copies to clipboard when you click the extension
+- **Archive after use** - Optionally archive emails after copying the code
 - **Badge notification** - Shows a dot when a new code is available
 
 ## Setup
@@ -29,7 +30,7 @@ A Chrome extension that automatically detects verification codes from Gmail and 
    - User support email: your email
    - Developer contact: your email
 4. Add scopes:
-   - `.../auth/gmail.readonly`
+   - `.../auth/gmail.modify` (allows reading emails and archiving)
 5. Add your email as a test user
 
 ### 3. Create OAuth Client ID
@@ -61,13 +62,23 @@ You can use any icon generator or create simple ones with a lock/key symbol.
 4. Select the `verification-code-grabber` folder
 5. Note your extension ID and update the OAuth Client ID in Google Cloud Console
 
+### Re-authenticating After Updates
+
+If you update the extension with new OAuth scopes, users need to re-authenticate:
+
+1. Click the extension icon
+2. Sign out (if there's an option) or go to `chrome://extensions/`
+3. Click "Remove" on the extension, then reload it
+4. Sign in again to grant the new permissions
+
 ## Usage
 
 1. Click the extension icon to sign in with Google
-2. Grant Gmail read-only access
+2. Grant Gmail access when prompted
 3. When you receive a verification code email, the extension badge will show a dot
 4. Click the extension to see the code - it auto-copies to your clipboard!
-5. Click "Dismiss" to clear the current code
+5. Click **"Copy & Archive"** to copy the code and move the email out of your inbox
+6. Click "Dismiss" to clear the current code without archiving
 
 ## How It Works
 
@@ -80,7 +91,7 @@ You can use any icon generator or create simple ones with a lock/key symbol.
 
 ## Privacy
 
-- Only requests `gmail.readonly` scope (can't send or modify emails)
+- Uses `gmail.modify` scope (can read and archive emails, cannot send or delete)
 - All processing happens locally in your browser
 - No external servers or data collection
 - Codes are only stored temporarily in Chrome's local storage

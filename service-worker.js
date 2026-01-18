@@ -1,4 +1,4 @@
-import { fetchRecentEmails, getAuthToken } from './utils/gmail-api.js';
+import { fetchRecentEmails, getAuthToken, archiveEmail } from './utils/gmail-api.js';
 import { extractVerificationCode } from './utils/parser.js';
 
 const ALARM_NAME = 'check-emails';
@@ -43,6 +43,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === 'CHECK_NOW') {
     handleCheckNow().then(sendResponse);
+    return true; // Keep channel open for async response
+  }
+
+  if (message.type === 'ARCHIVE_EMAIL') {
+    handleArchiveEmail(message.messageId).then(sendResponse);
     return true; // Keep channel open for async response
   }
 });
@@ -95,6 +100,7 @@ async function handleCheckNow() {
           from: email.from,
           subject: email.subject,
           timestamp: email.timestamp,
+          messageId: email.id,
           copied: false
         };
 
@@ -115,6 +121,29 @@ async function handleCheckNow() {
   } catch (err) {
     console.error('[VCG] CHECK_NOW error:', err);
     return { error: err.message || 'Failed to check Gmail' };
+  }
+}
+
+// Handle ARCHIVE_EMAIL request from popup
+async function handleArchiveEmail(messageId) {
+  console.log('[VCG] ARCHIVE_EMAIL request received for:', messageId);
+
+  if (!messageId) {
+    return { success: false, error: 'No message ID provided' };
+  }
+
+  try {
+    const token = await getAuthToken(false);
+    if (!token) {
+      return { success: false, error: 'No auth token' };
+    }
+
+    await archiveEmail(token, messageId);
+    console.log('[VCG] Email archived successfully');
+    return { success: true };
+  } catch (err) {
+    console.error('[VCG] Archive error:', err);
+    return { success: false, error: err.message || 'Failed to archive email' };
   }
 }
 
@@ -165,6 +194,7 @@ async function checkForCodes() {
               from: email.from,
               subject: email.subject,
               timestamp: email.timestamp,
+              messageId: email.id,
               copied: false
             }
           });

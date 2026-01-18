@@ -199,8 +199,47 @@ function stripHtml(html) {
  * Revoke an auth token
  * @param {string} token - Token to revoke
  */
-async function revokeToken(token) {
+export async function revokeToken(token) {
   return new Promise((resolve) => {
     chrome.identity.removeCachedAuthToken({ token }, resolve);
   });
+}
+
+/**
+ * Archive an email by removing it from inbox
+ * @param {string} token - OAuth token
+ * @param {string} messageId - Gmail message ID
+ * @returns {Promise<boolean>} Success status
+ */
+export async function archiveEmail(token, messageId) {
+  try {
+    const url = `${GMAIL_API_BASE}/users/me/messages/${messageId}/modify`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        removeLabelIds: ['INBOX']
+      })
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        await revokeToken(token);
+        throw new Error('Token expired');
+      }
+      if (response.status === 403) {
+        throw new Error('Permission denied - please re-authenticate');
+      }
+      throw new Error(`Gmail API error: ${response.status}`);
+    }
+
+    return true;
+  } catch (err) {
+    console.error('[Gmail API] Archive error:', err);
+    throw err;
+  }
 }
