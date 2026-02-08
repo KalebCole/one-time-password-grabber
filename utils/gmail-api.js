@@ -184,13 +184,23 @@ function decodeBase64(data) {
  */
 function stripHtml(html) {
   return html
+    // Remove hidden elements (preheader text, invisible content)
+    .replace(/<[^>]+(?:display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0|max-height\s*:\s*0|mso-hide\s*:\s*all)[^>]*>[\s\S]*?<\/[^>]+>/gi, '')
+    // Remove tracking pixels (1x1 images)
+    .replace(/<img[^>]*(?:width\s*=\s*["']?1["']?|height\s*=\s*["']?1["']?)[^>]*\/?>/gi, '')
+    // Remove footer sections
+    .replace(/<footer[^>]*>[\s\S]*?<\/footer>/gi, '')
+    // Remove style and script blocks
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    // Strip remaining tags
     .replace(/<[^>]+>/g, ' ')
+    // Decode entities
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
+    // Normalize whitespace
     .replace(/\s+/g, ' ')
     .trim();
 }
