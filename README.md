@@ -1,117 +1,125 @@
-# Verification Code Grabber
+# 🔓 Verification Code Grabber
 
-A Chrome extension that automatically detects verification codes from Gmail and copies them to your clipboard with one click.
+**Your personal agent for 2FA codes.** No more tab-switching, squinting at emails, or fumbling with your phone. This Chrome extension grabs verification codes from Gmail and SMS, keeps a history, and can auto-fill them right into the page.
 
-## Features
+> _"Adding a new device shouldn't feel like defusing a bomb."_
 
-- **Background polling** - Checks Gmail every minute for new verification codes
-- **Smart detection** - Uses keyword matching + regex to find OTP codes
-- **One-click copy** - Auto-copies to clipboard when you click the extension
-- **Archive after use** - Optionally archive emails after copying the code
-- **Badge notification** - Shows a dot when a new code is available
+---
 
-## Setup
+## ✨ What It Does
 
-### 1. Create Google Cloud Project
+| Feature | Description |
+|---------|-------------|
+| 🔍 **Smart Detection** | Scans Gmail and SMS for verification codes using keyword + regex matching |
+| 📋 **One-Click Copy** | Code ready on your clipboard the moment you open the popup |
+| 🤖 **Auto-Fill** | Detects OTP fields on any page and offers to fill them — no paste needed |
+| 🗂️ **Code History** | Rolling list of your last 10 codes, so dismissed codes aren't gone forever |
+| 📦 **Archive & Dismiss** | Clean up verification emails after use |
+| 🟢 **Badge Notification** | Green dot when a fresh code is waiting |
+| 📱 **SMS Relay** | Pulls codes from your phone via a local SMS relay |
+
+---
+
+## 🚀 How It Works
+
+```
+📧 Gmail / 📱 SMS
+     ↓
+  Service worker polls every 60s
+     ↓
+  Detects code → stores it → badge lights up
+     ↓
+  ┌─────────────────────────────────┐
+  │  Popup: see code, copy, archive │
+  │  History: last 10 codes         │
+  └─────────────────────────────────┘
+     ↓
+  Content script spots OTP field on page
+     ↓
+  ┌──────────────────────────┐
+  │  "621971"  [Fill]  [×]   │  ← Shadow DOM popover
+  └──────────────────────────┘
+     ↓
+  Fills input, dispatches events (React/Vue compatible)
+```
+
+---
+
+## 🎯 Auto-Fill Detection
+
+The content script identifies OTP fields using these heuristics (in priority order):
+
+1. `autocomplete="one-time-code"` — W3C standard
+2. `name` / `id` matching OTP patterns (`otp`, `mfa`, `2fa`, `verification-code`, etc.)
+3. `placeholder` containing "code", "OTP", "digit", "PIN"
+4. `type="tel"` or `type="number"` with `maxlength` 4-8
+5. `inputmode="numeric"` with `maxlength` 4-8
+6. **Split-digit inputs** — 4-8 adjacent `input[maxlength="1"]` elements
+
+Works on Google, GitHub, banks, and pretty much any site with an OTP field.
+
+---
+
+## 🛠️ Setup
+
+<details>
+<summary><strong>1. Google Cloud Project</strong></summary>
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project (e.g., "Verification Code Grabber")
-3. Enable the **Gmail API**:
-   - Go to APIs & Services > Library
-   - Search for "Gmail API"
-   - Click Enable
+2. Create a new project
+3. Enable the **Gmail API** (APIs & Services > Library)
+4. Configure OAuth consent screen (External, add `gmail.modify` scope, add yourself as test user)
+5. Create OAuth client ID (type: Chrome Extension, enter your extension ID)
+6. Copy the Client ID into `manifest.json` under `oauth2.client_id`
+</details>
 
-### 2. Configure OAuth Consent Screen
+<details>
+<summary><strong>2. Load the Extension</strong></summary>
 
-1. Go to APIs & Services > OAuth consent screen
-2. Select "External" user type
-3. Fill in the required fields:
-   - App name: "Verification Code Grabber"
-   - User support email: your email
-   - Developer contact: your email
-4. Add scopes:
-   - `.../auth/gmail.modify` (allows reading emails and archiving)
-5. Add your email as a test user
+1. Open `chrome://extensions/`
+2. Enable **Developer mode**
+3. Click **Load unpacked** → select this folder
+4. Note the extension ID and update it in Google Cloud Console
+</details>
 
-### 3. Create OAuth Client ID
+<details>
+<summary><strong>3. SMS Relay (optional)</strong></summary>
 
-1. Go to APIs & Services > Credentials
-2. Click "Create Credentials" > "OAuth client ID"
-3. Select "Chrome Extension" as application type
-4. Enter your extension ID (get it after loading the extension)
-5. Copy the Client ID
+For SMS code detection, run the SMS relay server on a Mac connected to your phone's Messages database. The extension connects via Tailscale at the address configured in `manifest.json` host permissions.
+</details>
 
-### 4. Update manifest.json
+---
 
-Replace `YOUR_CLIENT_ID.apps.googleusercontent.com` in `manifest.json` with your actual Client ID.
-
-### 5. Add Icons
-
-Create or download icons in these sizes and place them in the `icons/` folder:
-- `icon16.png` (16x16 pixels)
-- `icon48.png` (48x48 pixels)
-- `icon128.png` (128x128 pixels)
-
-You can use any icon generator or create simple ones with a lock/key symbol.
-
-### 6. Load the Extension
-
-1. Open Chrome and go to `chrome://extensions/`
-2. Enable "Developer mode" (top right)
-3. Click "Load unpacked"
-4. Select the `verification-code-grabber` folder
-5. Note your extension ID and update the OAuth Client ID in Google Cloud Console
-
-### Re-authenticating After Updates
-
-If you update the extension with new OAuth scopes, users need to re-authenticate:
-
-1. Click the extension icon
-2. Sign out (if there's an option) or go to `chrome://extensions/`
-3. Click "Remove" on the extension, then reload it
-4. Sign in again to grant the new permissions
-
-## Usage
-
-1. Click the extension icon to sign in with Google
-2. Grant Gmail access when prompted
-3. When you receive a verification code email, the extension badge will show a dot
-4. Click the extension to see the code - it auto-copies to your clipboard!
-5. Click **"Copy & Archive"** to copy the code and move the email out of your inbox
-6. Click "Dismiss" to clear the current code without archiving
-
-## How It Works
-
-1. **Polling**: Service worker checks Gmail every 60 seconds
-2. **Detection**: Looks for emails with keywords like "verification", "OTP", "code"
-3. **Extraction**: Uses regex patterns to find 4-8 digit codes
-4. **Storage**: Saves the most recent code in Chrome storage
-5. **Badge**: Shows a green dot when a new code is available
-6. **Popup**: Displays the code and auto-copies on first open
-
-## Privacy
-
-- Uses `gmail.modify` scope (can read and archive emails, cannot send or delete)
-- All processing happens locally in your browser
-- No external servers or data collection
-- Codes are only stored temporarily in Chrome's local storage
-
-## Development
+## 📂 Project Structure
 
 ```
 verification-code-grabber/
-├── manifest.json           # Extension config
-├── service-worker.js       # Background polling
+├── manifest.json            # Extension config + permissions
+├── service-worker.js        # Background polling, code history, message handlers
+├── content/
+│   └── autofill.js          # OTP field detection + Shadow DOM popover + fill
 ├── popup/
-│   ├── popup.html
-│   ├── popup.css
-│   └── popup.js
+│   ├── popup.html           # Popup layout with history section
+│   ├── popup.css            # Dark theme styles
+│   └── popup.js             # Popup logic, history rendering, copy/archive
 ├── utils/
-│   ├── gmail-api.js       # Gmail API helpers
-│   └── parser.js          # Code extraction
+│   ├── gmail-api.js         # Gmail API helpers (fetch, archive)
+│   ├── parser.js            # Verification code extraction
+│   └── sms-api.js           # SMS relay client
 └── icons/
 ```
 
-## License
+---
+
+## 🔒 Privacy
+
+- **Local only** — all processing happens in your browser
+- **No external servers** — no data collection, no analytics
+- **Minimal scope** — `gmail.modify` (read + archive, cannot send or delete)
+- **Codes are ephemeral** — stored temporarily in Chrome local storage
+
+---
+
+## 📜 License
 
 MIT
