@@ -2,14 +2,22 @@
   "manifest_version": 3,
   "name": "Verification Code Grabber",
   "version": "1.0.0",
-  "description": "Automatically detects and copies verification codes from Gmail",
+  "description": "Automatically detects and copies verification codes from Gmail and SMS",
   "permissions": [
     "identity",
     "storage",
     "alarms"
   ],
   "host_permissions": [
-    "https://gmail.googleapis.com/*"
+    "https://gmail.googleapis.com/*",
+    "http://100.65.218.104:3847/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/autofill.js"],
+      "run_at": "document_idle"
+    }
   ],
   "background": {
     "service_worker": "service-worker.js",

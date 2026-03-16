@@ -8,6 +8,12 @@
 </head>
 <body>
   <div class="container">
+    <!-- Source Tabs -->
+    <div id="source-tabs" class="source-tabs">
+      <button class="tab active" data-source="gmail">Gmail</button>
+      <button class="tab" data-source="sms">SMS</button>
+    </div>
+
     <!-- Header with Check Now button -->
     <div id="header" class="header hidden">
       <button id="check-now-btn" class="btn check-now">
@@ -21,7 +27,7 @@
     <!-- Loading State -->
     <div id="loading" class="state hidden">
       <div class="spinner-large"></div>
-      <p>Checking Gmail...</p>
+      <p id="loading-text">Checking Gmail...</p>
     </div>
 
     <!-- Auth Required State -->
@@ -61,11 +67,28 @@
       </div>
     </div>
 
+    <!-- SMS Offline State -->
+    <div id="sms-offline" class="state hidden">
+      <div class="icon">📡</div>
+      <p>Mac Mini offline</p>
+      <span class="hint">SMS relay unreachable — check Tailscale</span>
+      <button id="sms-retry-btn" class="btn secondary retry">Retry</button>
+    </div>
+
     <!-- Error State -->
     <div id="error-state" class="state hidden">
       <div class="icon">⚠️</div>
       <p id="error-message">Something went wrong</p>
       <button id="retry-btn" class="btn secondary">Retry</button>
+    </div>
+
+    <!-- Code History -->
+    <div id="history-section" class="history-section hidden">
+      <button id="history-toggle" class="history-toggle">
+        <span class="history-arrow">▶</span> Recent codes
+      </button>
+      <div id="history-list" class="history-list hidden"></div>
+      <a id="clear-history" class="clear-history hidden" href="#">Clear history</a>
     </div>
   </div>
 

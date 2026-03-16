@@ -1,8 +1,32 @@
 import { fetchRecentEmails, getAuthToken, archiveEmail } from './utils/gmail-api.js';
 import { extractVerificationCode } from './utils/parser.js';
+import { fetchSmsVerificationCodes } from './utils/sms-api.js';
 
 const ALARM_NAME = 'check-emails';
 const POLL_INTERVAL_MINUTES = 1; // Check every minute
+const MAX_HISTORY = 10;
+
+// Append a code entry to the rolling history (max 10, deduped by code+timestamp)
+async function appendToHistory(entry) {
+  const { codeHistory = [] } = await chrome.storage.local.get(['codeHistory']);
+
+  const isDupe = codeHistory.some(
+    (h) => h.code === entry.code && h.timestamp === entry.timestamp
+  );
+  if (isDupe) return;
+
+  const updated = [entry, ...codeHistory].slice(0, MAX_HISTORY);
+  await chrome.storage.local.set({ codeHistory: updated });
+}
+
+async function showBadgeDot() {
+  await chrome.action.setBadgeText({ text: '\u2022' });
+  await chrome.action.setBadgeBackgroundColor({ color: '#4ade80' });
+}
+
+function buildHistoryEntry(code, from, source, timestamp) {
+  return { code, from, source, timestamp };
+}
 
 // Initialize alarm on install
 chrome.runtime.onInstalled.addListener(() => {
@@ -34,23 +58,34 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-// Handle messages from popup
+// Handle messages from popup and content scripts
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'AUTH_REQUEST') {
-    handleAuthRequest().then(sendResponse);
-    return true; // Keep channel open for async response
-  }
-
-  if (message.type === 'CHECK_NOW') {
-    handleCheckNow().then(sendResponse);
-    return true; // Keep channel open for async response
-  }
-
-  if (message.type === 'ARCHIVE_EMAIL') {
-    handleArchiveEmail(message.messageId).then(sendResponse);
+  const handler = messageHandlers[message.type];
+  if (handler) {
+    handler(message).then(sendResponse);
     return true; // Keep channel open for async response
   }
 });
+
+const messageHandlers = {
+  AUTH_REQUEST: () => handleAuthRequest(),
+  CHECK_NOW: () => handleCheckNow(),
+  ARCHIVE_EMAIL: (msg) => handleArchiveEmail(msg.messageId),
+  CHECK_SMS_NOW: (msg) => handleCheckSms(msg.sinceMinutes),
+
+  GET_CURRENT_CODE: async () => {
+    const { currentCode } = await chrome.storage.local.get(['currentCode']);
+    if (currentCode?.code) {
+      return { code: currentCode.code, source: currentCode.source || 'gmail' };
+    }
+    return { code: null };
+  },
+
+  CLEAR_HISTORY: async () => {
+    await chrome.storage.local.set({ codeHistory: [] });
+    return { success: true };
+  },
+};
 
 // Handle auth request from popup
 async function handleAuthRequest() {
@@ -104,14 +139,10 @@ async function handleCheckNow() {
           copied: false
         };
 
-        // Store it
         await chrome.storage.local.set({ currentCode: codeData });
+        await appendToHistory(buildHistoryEntry(result.code, email.from, 'gmail', email.timestamp));
+        await showBadgeDot();
 
-        // Show badge dot
-        await chrome.action.setBadgeText({ text: '•' });
-        await chrome.action.setBadgeBackgroundColor({ color: '#4ade80' });
-
-        // Return the code to popup
         return { code: codeData };
       }
     }
@@ -144,6 +175,40 @@ async function handleArchiveEmail(messageId) {
   } catch (err) {
     console.error('[VCG] Archive error:', err);
     return { success: false, error: err.message || 'Failed to archive email' };
+  }
+}
+
+// Handle CHECK_SMS_NOW request from popup
+async function handleCheckSms(sinceMinutes) {
+  console.log('[VCG] CHECK_SMS_NOW request received');
+
+  try {
+    const result = await fetchSmsVerificationCodes(sinceMinutes || 60);
+    const codes = result?.codes || [];
+
+    if (codes.length > 0) {
+      const latest = codes[0];
+      const codeData = {
+        code: latest.code,
+        from: latest.from,
+        timestamp: latest.timestamp,
+        messageRowId: latest.messageRowId,
+        source: 'sms',
+        copied: false,
+      };
+
+      // Store as current code (enables auto-fill for SMS codes)
+      await chrome.storage.local.set({ currentCode: codeData });
+
+      await appendToHistory(buildHistoryEntry(latest.code, latest.from, 'sms', latest.timestamp));
+
+      return { code: codeData };
+    }
+
+    return { code: null };
+  } catch (err) {
+    console.error('[VCG] CHECK_SMS_NOW error:', err);
+    return { error: err.message || 'Failed to reach SMS relay' };
   }
 }
 
@@ -199,9 +264,8 @@ async function checkForCodes() {
             }
           });
 
-          // Show badge dot
-          await chrome.action.setBadgeText({ text: '•' });
-          await chrome.action.setBadgeBackgroundColor({ color: '#4ade80' });
+          await appendToHistory(buildHistoryEntry(result.code, email.from, 'gmail', email.timestamp));
+          await showBadgeDot();
 
           console.log('[VCG] New code stored and badge updated');
         }
@@ -214,10 +278,5 @@ async function checkForCodes() {
     console.error('[VCG] Error checking for codes:', err);
   }
 }
-
-// Clear badge when popup is opened (optional - handled in popup too)
-chrome.action.onClicked.addListener(() => {
-  // This won't fire since we have a popup, but good to have
-});
 
 console.log('[VCG] Service worker loaded');

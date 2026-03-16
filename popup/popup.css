@@ -12,6 +12,38 @@ body {
   padding: 16px;
 }
 
+/* Source Tabs */
+.source-tabs {
+  display: flex;
+  width: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #2a2a4a;
+  margin-bottom: 4px;
+}
+
+.source-tabs .tab {
+  flex: 1;
+  padding: 8px 0;
+  border: none;
+  background: transparent;
+  color: #666;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.source-tabs .tab:hover {
+  color: #aaa;
+  background: rgba(79, 70, 229, 0.1);
+}
+
+.source-tabs .tab.active {
+  background: #4f46e5;
+  color: white;
+}
+
 .container {
   display: flex;
   flex-direction: column;
@@ -255,4 +287,137 @@ p {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* History Section */
+.history-section {
+  width: 100%;
+  border-top: 1px solid #2a2a4a;
+  padding-top: 10px;
+  margin-top: 4px;
+}
+
+.history-toggle {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.history-toggle:hover {
+  color: #aaa;
+}
+
+.history-arrow {
+  font-size: 10px;
+  transition: transform 0.15s ease;
+  display: inline-block;
+}
+
+.history-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: #16213e;
+}
+
+.history-item:hover {
+  background: #1a2845;
+}
+
+.history-code {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #00d9ff;
+  letter-spacing: 1px;
+  min-width: 70px;
+}
+
+.history-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.history-from {
+  font-size: 10px;
+  color: #888;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: #555;
+}
+
+.history-source {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: #2a2a4a;
+  color: #888;
+}
+
+.history-copy-btn {
+  background: #0f3460;
+  border: none;
+  color: #aaa;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.history-copy-btn:hover {
+  background: #1a4a7a;
+  color: #fff;
+}
+
+.history-copy-btn.copied {
+  background: #166534;
+  color: #4ade80;
+}
+
+.clear-history {
+  display: block;
+  font-size: 10px;
+  color: #555;
+  text-align: center;
+  margin-top: 8px;
+  text-decoration: none;
+}
+
+.clear-history:hover {
+  color: #f87171;
 }
