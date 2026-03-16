@@ -1,6 +1,6 @@
 # 🔓 Verification Code Grabber
 
-**Your personal agent for 2FA codes.** No more tab-switching, squinting at emails, or fumbling with your phone. This Chrome extension grabs verification codes from Gmail and SMS, keeps a history, and can auto-fill them right into the page.
+A Chrome extension that grabs verification codes from Gmail and SMS, keeps a history, and auto-fills them right into the page. No more tab-switching, squinting at emails, or fumbling with your phone.
 
 > _"Adding a new device shouldn't feel like defusing a bomb."_
 
